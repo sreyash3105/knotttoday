@@ -271,7 +271,14 @@ export function EventsPage() {
       >
         {viewingEvent && (
           <div>
-            <img src={viewingEvent.image} alt={viewingEvent.name} className="mb-4 h-48 w-full rounded-xl object-cover" />
+            <img
+              src={viewingEvent.image || images.mandap}
+              alt={viewingEvent.name}
+              onError={(e) => {
+                e.currentTarget.src = 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&q=80&w=1200';
+              }}
+              className="mb-4 h-48 w-full rounded-xl object-cover"
+            />
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {[
                 ['Date', viewingEvent.date],

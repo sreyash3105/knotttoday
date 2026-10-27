@@ -360,7 +360,14 @@ export function DashboardPage() {
                 }`}
               >
                 <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl bg-burgundy-100">
-                  <img src={b.image || images.photography} alt={b.serviceName} className="h-full w-full object-cover" />
+                  <img
+                    src={b.image || images.photography}
+                    alt={b.serviceName}
+                    onError={(e) => {
+                      e.currentTarget.src = 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&q=80&w=1200';
+                    }}
+                    className="h-full w-full object-cover"
+                  />
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
@@ -401,7 +408,14 @@ export function DashboardPage() {
                   className="card overflow-hidden cursor-pointer hover:shadow-md transition-all hover:scale-[1.02]"
                 >
                   <div className="relative h-24">
-                    <img src={service.image} alt={service.name} className="h-full w-full object-cover" />
+                    <img
+                      src={service.image}
+                      alt={service.name}
+                      onError={(e) => {
+                        e.currentTarget.src = 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&q=80&w=1200';
+                      }}
+                      className="h-full w-full object-cover"
+                    />
                     <div className="absolute inset-0 bg-burgundy-900/30" />
                     <div className="absolute left-3 top-3 flex h-8 w-8 items-center justify-center rounded-lg bg-white/90 shadow-sm">
                       <Icon className="h-4.5 w-4.5 text-burgundy-700" />

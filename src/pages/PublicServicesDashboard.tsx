@@ -126,6 +126,9 @@ export function PublicServicesDashboard() {
           <img
             src={images.heroBride}
             alt="Luxury Wedding Celebration"
+            onError={(e) => {
+              e.currentTarget.src = 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&q=80&w=1600';
+            }}
             className="h-full w-full object-cover object-center opacity-35 filter brightness-90 scale-105 animate-pulse duration-[10000ms]"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-burgundy-950 via-burgundy-950/60 to-transparent" />
@@ -198,6 +201,9 @@ export function PublicServicesDashboard() {
                 <img
                   src={images.brideRedLehenga}
                   alt="Bridal Haute Couture"
+                  onError={(e) => {
+                    e.currentTarget.src = 'https://images.unsplash.com/photo-1583939003579-730e3918a45a?auto=format&fit=crop&q=80&w=1200';
+                  }}
                   className="h-[520px] w-full object-cover transition-transform duration-700 hover:scale-105"
                 />
               </div>

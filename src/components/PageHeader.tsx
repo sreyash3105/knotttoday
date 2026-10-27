@@ -12,7 +12,14 @@ export function PageHeader({ title, description, image, action }: PageHeaderProp
     <div className="mb-6 overflow-hidden rounded-2xl">
       {image ? (
         <div className="relative h-48 sm:h-56">
-          <img src={image} alt={title} className="h-full w-full object-cover" />
+          <img
+            src={image}
+            alt={title}
+            onError={(e) => {
+              e.currentTarget.src = 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&q=80&w=1200';
+            }}
+            className="h-full w-full object-cover"
+          />
           <div className="absolute inset-0 bg-gradient-to-r from-burgundy-900/80 via-burgundy-900/50 to-transparent" />
           <div className="absolute inset-0 flex flex-col justify-center px-6 sm:px-8">
             <h1 className="text-2xl font-semibold text-white drop-shadow sm:text-3xl">

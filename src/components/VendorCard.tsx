@@ -27,8 +27,12 @@ export function VendorCard({
     <div className="card group overflow-hidden hover:shadow-md transition-all">
       <div className="relative h-48 overflow-hidden">
         <img
-          src={vendor.image}
+          src={vendor.image || 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&q=80&w=1200'}
           alt={vendor.name}
+          loading="lazy"
+          onError={(e) => {
+            e.currentTarget.src = 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&q=80&w=1200';
+          }}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
         <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-white/90 px-2 py-1 shadow-sm">

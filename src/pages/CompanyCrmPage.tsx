@@ -1115,7 +1115,14 @@ export function CompanyCrmPage() {
                     className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-md transition-shadow"
                   >
                     <div className="relative h-44 bg-slate-100">
-                      <img src={srv.image} alt={srv.name} className="h-full w-full object-cover" />
+                      <img
+                        src={srv.image}
+                        alt={srv.name}
+                        onError={(e) => {
+                          e.currentTarget.src = 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&q=80&w=1200';
+                        }}
+                        className="h-full w-full object-cover"
+                      />
                       <span className="absolute top-2 left-2 rounded bg-slate-900/80 px-2 py-0.5 text-[10px] font-bold uppercase text-white">
                         {srv.category}
                       </span>
@@ -1223,6 +1230,9 @@ export function CompanyCrmPage() {
                         <img
                           src={item.image}
                           alt={item.name}
+                          onError={(e) => {
+                            e.currentTarget.src = 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&q=80&w=1200';
+                          }}
                           className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                         <span className="absolute top-2 left-2 rounded-md bg-black/60 backdrop-blur-sm px-2 py-0.5 text-[10px] font-bold text-white">
@@ -1310,6 +1320,9 @@ export function CompanyCrmPage() {
                         <img
                           src={item.image}
                           alt={item.name}
+                          onError={(e) => {
+                            e.currentTarget.src = 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&q=80&w=1200';
+                          }}
                           className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                         <span className="absolute top-2 left-2 rounded-md bg-black/60 backdrop-blur-sm px-2 py-0.5 text-[10px] font-bold text-white">

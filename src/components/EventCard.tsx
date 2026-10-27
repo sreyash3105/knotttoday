@@ -15,8 +15,11 @@ export function EventCard({ event, onView, onEdit, onDelete, compact }: EventCar
     <div className="card group overflow-hidden hover:shadow-md">
       <div className="relative h-44 overflow-hidden">
         <img
-          src={event.image}
+          src={event.image || 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&q=80&w=1200'}
           alt={event.name}
+          onError={(e) => {
+            e.currentTarget.src = 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&q=80&w=1200';
+          }}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-charcoal/60 to-transparent" />

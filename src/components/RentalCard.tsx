@@ -22,8 +22,14 @@ export function RentalCard({ item, type, onView, onRent }: RentalCardProps) {
     <div className="card group overflow-hidden hover:shadow-md">
       <div className="relative aspect-square overflow-hidden">
         <img
-          src={item.image}
+          src={item.image || (isJewellery ? 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&q=80&w=1200' : 'https://images.unsplash.com/photo-1583939003579-730e3918a45a?auto=format&fit=crop&q=80&w=1200')}
           alt={item.name}
+          loading="lazy"
+          onError={(e) => {
+            e.currentTarget.src = isJewellery
+              ? 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&q=80&w=1200'
+              : 'https://images.unsplash.com/photo-1583939003579-730e3918a45a?auto=format&fit=crop&q=80&w=1200';
+          }}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
         <div className="absolute left-3 top-3">
