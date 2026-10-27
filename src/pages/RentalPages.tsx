@@ -5,7 +5,8 @@ import { RentalCard } from '@/components/RentalCard';
 import { RentalModal } from '@/components/RentalModal';
 import { SearchBar } from '@/components/SearchFilter';
 import { useLanguage } from '@/hooks/useLanguage';
-import { jewelleryData, clothesData, images } from '@/data/mockData';
+import { useServices } from '@/context/ServicesContext';
+import { images } from '@/data/mockData';
 import type { JewelleryItem, ClothesItem, Availability } from '@/types';
 
 interface RentalCatalogPageProps {
@@ -157,6 +158,7 @@ export function RentalCatalogPage({
 
 // ─── Jewellery Page ───
 export function JewelleryPage() {
+  const { jewellery } = useServices();
   return (
     <RentalCatalogPage
       title="Jewellery Rental"
@@ -165,7 +167,7 @@ export function JewelleryPage() {
       pageDescription="Beautiful jewellery for every wedding celebration"
       heroImage={images.jewellery1}
       type="jewellery"
-      data={jewelleryData}
+      data={jewellery}
       categories={['Bridal Necklace', 'Choker', 'Long Necklace', 'Earrings', 'Jhumka', 'Bangles', 'Maang Tikka', 'Matha Patti', 'Nath / Nose Ring', 'Kamarbandh', 'Anklets', 'Brooch', 'Sehra', 'Groom Necklace', 'Bracelet', 'Cufflinks']}
     />
   );
@@ -173,6 +175,7 @@ export function JewelleryPage() {
 
 // ─── Clothes Page ───
 export function ClothesPage() {
+  const { clothes } = useServices();
   return (
     <RentalCatalogPage
       title="Clothes Rental"
@@ -181,7 +184,7 @@ export function ClothesPage() {
       pageDescription="Find the perfect outfit for every celebration"
       heroImage={images.lehenga1}
       type="clothes"
-      data={clothesData}
+      data={clothes}
       categories={['Bridal Lehenga', 'Wedding Saree', 'Reception Outfit', 'Mehendi Outfit', 'Haldi Outfit', 'Dupatta', 'Bridal Accessories', 'Sherwani', 'Suit', 'Kurta', 'Indo-Western', 'Safa / Turban', 'Groom Accessories']}
     />
   );

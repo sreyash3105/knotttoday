@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import type { UserProfile, UserBooking } from '@/types/auth';
-import { CUSTOMER_1 } from '@/data/userProfiles';
 import { routeBookingToStorage } from '@/utils/bookingRouter';
 import { db, type UserRecord } from '@/db';
 
@@ -28,7 +27,10 @@ export interface AuthContextType {
   registerNewCouple: (data: RegisterCoupleData) => Promise<AuthResponse>;
   resetPassword: (email: string, newPassword: string) => Promise<AuthResponse>;
   logout: () => void;
-  addBookingToCurrentCustomer: (newBooking: Omit<UserBooking, 'id'>, forWhomHint?: string) => void;
+  addBookingToCurrentCustomer: (
+    newBooking: Omit<UserBooking, 'id'> & { id?: string },
+    forWhomHint?: string
+  ) => void;
   updateWeddingDetails: (weddingDate: string, location?: string, weddingDateISO?: string) => void;
   updateCoupleNames: (brideName: string, groomName: string) => void;
 }
@@ -46,7 +48,7 @@ function recordToProfile(rec: UserRecord): UserProfile {
     weddingDateISO: rec.weddingDateISO,
     location: rec.location,
     hasBooking: rec.hasBooking,
-    userBookings: rec.id === CUSTOMER_1.id ? CUSTOMER_1.userBookings : [],
+    userBookings: [],
   };
 }
 
@@ -70,6 +72,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
+        if (
+          parsed.user &&
+          (parsed.user.id === 'customer_1' ||
+            parsed.user.id === 'customer_2' ||
+            parsed.user.email === 'aishwarya@wedding.com' ||
+            parsed.user.email === 'newuser@wedding.com')
+        ) {
+          localStorage.removeItem(STORAGE_KEY);
+          return false;
+        }
         return Boolean(parsed.isLoggedIn);
       }
     } catch (e) {
@@ -83,6 +95,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
+        if (
+          parsed.user &&
+          (parsed.user.id === 'customer_1' ||
+            parsed.user.id === 'customer_2' ||
+            parsed.user.email === 'aishwarya@wedding.com' ||
+            parsed.user.email === 'newuser@wedding.com')
+        ) {
+          localStorage.removeItem(STORAGE_KEY);
+          return null;
+        }
         return parsed.user || null;
       }
     } catch (e) {
@@ -106,13 +128,71 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [isLoggedIn, user]);
 
+  // Synchronize booking status changes made by company CRM in real time
+  useEffect(() => {
+    const handleStatusSync = (e: any) => {
+      const { id, serviceOrItemName, status, rejectionReason } = e.detail || {};
+      if (!status) return;
+
+      setUser((prevUser) => {
+        if (!prevUser) return prevUser;
+        let modified = false;
+        const updatedBookings = (prevUser.userBookings || []).map((b) => {
+          const isMatch =
+            (id && b.id === id) ||
+            (serviceOrItemName && (
+              b.serviceName === serviceOrItemName ||
+              b.vendorName === serviceOrItemName ||
+              (b.serviceName && serviceOrItemName.toLowerCase().includes(b.serviceName.toLowerCase())) ||
+              (b.vendorName && serviceOrItemName.toLowerCase().includes(b.vendorName.toLowerCase())) ||
+              (b.serviceName && serviceOrItemName.toLowerCase() === b.serviceName.toLowerCase())
+            ));
+
+          if (isMatch) {
+            modified = true;
+            return {
+              ...b,
+              id: id || b.id,
+              status,
+              rejectionReason: rejectionReason !== undefined ? rejectionReason : b.rejectionReason,
+            };
+          }
+          return b;
+        });
+        if (!modified) return prevUser;
+        return {
+          ...prevUser,
+          userBookings: updatedBookings,
+        };
+      });
+    };
+
+    const handleStorageReload = () => {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed && parsed.user) {
+            setUser(parsed.user);
+          }
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    window.addEventListener('knot_booking_status_synced', handleStatusSync);
+    window.addEventListener('wedding_data_changed', handleStorageReload);
+    window.addEventListener('storage', handleStorageReload);
+    return () => {
+      window.removeEventListener('knot_booking_status_synced', handleStatusSync);
+      window.removeEventListener('wedding_data_changed', handleStorageReload);
+      window.removeEventListener('storage', handleStorageReload);
+    };
+  }, []);
+
   const login = () => {
-    const defaultUser = db.findUserById(CUSTOMER_1.id);
-    if (defaultUser) {
-      loginAs(recordToProfile(defaultUser));
-    } else {
-      loginAs(CUSTOMER_1);
-    }
+    // No-op or prompt user to login
   };
 
   const loginAs = (userProfile: UserProfile) => {
@@ -182,24 +262,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const addBookingToCurrentCustomer = (
-    newBookingData: Omit<UserBooking, 'id'>,
+    newBookingData: Omit<UserBooking, 'id'> & { id?: string },
     forWhomHint?: string
   ) => {
     const targetUser = user || {
-      id: 'customer_2',
-      email: 'newuser@wedding.com',
-      brideName: 'Priya',
-      groomName: 'Vikram',
-      coupleInitials: 'P&V',
+      id: `guest_${Date.now()}`,
+      email: 'guest@wedding.com',
+      brideName: 'Bride',
+      groomName: 'Groom',
+      coupleInitials: 'B&G',
       weddingDate: 'To Be Decided',
       location: 'Not Specified Yet',
       hasBooking: true,
       userBookings: [],
     };
 
+    const bookingId = newBookingData.id || `booking_${Date.now()}`;
     const newBooking: UserBooking = {
       ...newBookingData,
-      id: `booking_${Date.now()}`,
+      id: bookingId,
+      status: newBookingData.status || 'Pending',
     };
 
     const updatedUser: UserProfile = {
@@ -212,7 +294,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoggedIn(true);
 
     // Route booking directly to /bride, /groom, or /tasks
-    routeBookingToStorage(newBookingData, updatedUser.id, forWhomHint);
+    routeBookingToStorage(newBooking, updatedUser.id, forWhomHint);
   };
 
   const updateWeddingDetails = (

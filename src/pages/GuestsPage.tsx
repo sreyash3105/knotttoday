@@ -1,6 +1,5 @@
 import { useState, useEffect, type FormEvent } from 'react';
-import { Plus, Pencil, Trash2, UtensilsCrossed, Users, ArrowRight, IndianRupee } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Plus, Pencil, Trash2, Users } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { PageHeader } from '@/components/PageHeader';
 import { Modal } from '@/components/Modal';
@@ -29,27 +28,19 @@ export function GuestsPage() {
 
   const userId = user?.id || 'visitor';
   const guestsKey = `wedding_guests_list_${userId}`;
-  const plateRateKey = `wedding_plate_rate_${userId}`;
 
-  // Initial load from localStorage or mock
+  // Initial load from localStorage or default empty for new accounts
   const [guests, setGuests] = useState<Guest[]>(() => {
     try {
       const saved = localStorage.getItem(guestsKey);
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
     } catch (e) {
       console.error(e);
     }
-    return guestsData;
-  });
-
-  const [plateRate, setPlateRate] = useState<number>(() => {
-    try {
-      const savedRate = localStorage.getItem(plateRateKey);
-      if (savedRate) return Number(savedRate) || 1500;
-    } catch (e) {
-      console.error(e);
-    }
-    return 1500;
+    return [];
   });
 
   const [search, setSearch] = useState('');
@@ -70,32 +61,22 @@ export function GuestsPage() {
     }
   };
 
-  const updatePlateRate = (newRate: number) => {
-    const val = Math.max(0, newRate);
-    setPlateRate(val);
-    try {
-      localStorage.setItem(plateRateKey, String(val));
-      window.dispatchEvent(new Event('wedding_data_changed'));
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
   // Sync from other tabs/windows if updated
   useEffect(() => {
     const handleSync = () => {
       try {
         const saved = localStorage.getItem(guestsKey);
-        if (saved) setGuests(JSON.parse(saved));
-        const savedRate = localStorage.getItem(plateRateKey);
-        if (savedRate) setPlateRate(Number(savedRate) || 1500);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) setGuests(parsed);
+        }
       } catch (e) {
         console.error(e);
       }
     };
     window.addEventListener('storage', handleSync);
     return () => window.removeEventListener('storage', handleSync);
-  }, [guestsKey, plateRateKey]);
+  }, [guestsKey]);
 
   // Dynamic calculations
   const totalPeopleCount = guests.reduce((sum, g) => sum + (Number(g.numberOfGuests) || 1), 0);
@@ -105,7 +86,9 @@ export function GuestsPage() {
   const groomPeopleCount = guests
     .filter((g) => g.side === 'Groom')
     .reduce((sum, g) => sum + (Number(g.numberOfGuests) || 1), 0);
-  const dynamicFoodBill = totalPeopleCount * plateRate;
+  const confirmedCount = guests
+    .filter((g) => g.rsvp === 'Confirmed')
+    .reduce((sum, g) => sum + (Number(g.numberOfGuests) || 1), 0);
 
   const filtered = guests.filter((g) => {
     const matchSearch = g.name.toLowerCase().includes(search.toLowerCase());
@@ -161,11 +144,11 @@ export function GuestsPage() {
   return (
     <Layout
       title={t('guests')}
-      subtitle={`${guests.length} entries (${totalPeopleCount} total attendees) &bull; Dynamic Food Bill: ₹${dynamicFoodBill.toLocaleString('en-IN')}`}
+      subtitle={`${guests.length} entries (${totalPeopleCount} total attendees)`}
     >
       <PageHeader
         title="Guest Management"
-        description="Manage your wedding guest list and dynamically calculate your catering & food bill based on live headcount"
+        description="Manage your wedding guest list, organize attendees by family side, and track live RSVPs"
         action={
           <button onClick={openAdd} className="btn-primary inline-flex items-center gap-2">
             <Plus className="h-4 w-4" /> {t('addGuest')}
@@ -173,65 +156,44 @@ export function GuestsPage() {
         }
       />
 
-      {/* ─── DYNAMIC FOOD BILL & CATERING SUMMARY BANNER ─── */}
-      <div className="mb-6 overflow-hidden rounded-2xl border-2 border-champagne-300 bg-gradient-to-br from-amber-50/70 via-white to-rose-50/40 p-5 shadow-sm">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-start gap-3.5">
-            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-burgundy-800 to-burgundy-950 text-champagne-300 shadow-md">
-              <UtensilsCrossed className="h-6 w-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="rounded-full bg-champagne-100 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-burgundy-900">
-                  Dynamic Calculation
-                </span>
-                <span className="text-xs text-charcoal/50">Auto-synced with Wedding Bill</span>
-              </div>
-              <h3 className="mt-1 text-lg font-bold text-burgundy-950">
-                Dynamic Catering &amp; Food Bill: ₹{dynamicFoodBill.toLocaleString('en-IN')}
-              </h3>
-              <p className="text-xs text-charcoal/65">
-                Formula: <span className="font-semibold text-burgundy-900">{totalPeopleCount} Total Guests</span> &times; <span className="font-semibold text-burgundy-900">₹{plateRate.toLocaleString('en-IN')} / plate</span>
-              </p>
-            </div>
+      {/* ─── GUEST HEADCOUNT & SIDE OVERVIEW CARDS ─── */}
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="card p-4 border border-burgundy-100 bg-white shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-charcoal/60">Total Attendees</span>
+            <Users className="h-4 w-4 text-burgundy-700" />
           </div>
+          <p className="mt-1 text-2xl font-bold font-serif text-burgundy-950">{totalPeopleCount}</p>
+          <p className="text-[11px] text-charcoal/50">Across {guests.length} guest parties</p>
+        </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Live Headcount Pill */}
-            <div className="rounded-xl border border-burgundy-100 bg-white px-3.5 py-2 text-center shadow-xs">
-              <span className="block text-[10px] font-bold uppercase text-charcoal/50">Total Headcount</span>
-              <span className="text-base font-bold text-burgundy-950">{totalPeopleCount} people</span>
-              <div className="flex justify-center gap-2 text-[10px] text-charcoal/60">
-                <span className="text-rose-600">Bride: {bridePeopleCount}</span>
-                <span>•</span>
-                <span className="text-champagne-700">Groom: {groomPeopleCount}</span>
-              </div>
-            </div>
-
-            {/* Configurable Plate Rate */}
-            <div className="rounded-xl border border-burgundy-100 bg-white px-3.5 py-2 shadow-xs">
-              <label className="block text-[10px] font-bold uppercase text-charcoal/50">Rate per Plate (₹)</label>
-              <div className="mt-0.5 flex items-center gap-1.5">
-                <input
-                  type="number"
-                  min={100}
-                  step={50}
-                  value={plateRate}
-                  onChange={(e) => updatePlateRate(Number(e.target.value))}
-                  className="w-24 rounded-lg border border-burgundy-200 bg-burgundy-50/30 px-2 py-0.5 text-center text-sm font-bold text-burgundy-950 focus:border-burgundy-500 focus:outline-none"
-                />
-              </div>
-            </div>
-
-            {/* Direct Bill Link */}
-            <Link
-              to="/bill"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-burgundy-700 px-4 py-2.5 text-xs font-bold text-white shadow transition-all hover:bg-burgundy-800"
-            >
-              <span>View in Bill</span>
-              <ArrowRight className="h-4 w-4" />
-            </Link>
+        <div className="card p-4 border border-rose-100 bg-rose-50/40 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-rose-800">Bride's Side</span>
+            <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-700">Bride</span>
           </div>
+          <p className="mt-1 text-2xl font-bold font-serif text-rose-950">{bridePeopleCount}</p>
+          <p className="text-[11px] text-rose-700/60">{guests.filter((g) => g.side === 'Bride').length} guest entries</p>
+        </div>
+
+        <div className="card p-4 border border-champagne-200 bg-champagne-50/40 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-champagne-900">Groom's Side</span>
+            <span className="rounded-full bg-champagne-100 px-2 py-0.5 text-[10px] font-bold text-champagne-800">Groom</span>
+          </div>
+          <p className="mt-1 text-2xl font-bold font-serif text-burgundy-950">{groomPeopleCount}</p>
+          <p className="text-[11px] text-charcoal/50">{guests.filter((g) => g.side === 'Groom').length} guest entries</p>
+        </div>
+
+        <div className="card p-4 border border-emerald-100 bg-emerald-50/40 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-emerald-800">Confirmed Attendees</span>
+            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">Confirmed</span>
+          </div>
+          <p className="mt-1 text-2xl font-bold font-serif text-emerald-950">{confirmedCount}</p>
+          <p className="text-[11px] text-emerald-700/60">
+            {guests.filter((g) => g.rsvp === 'Pending').length} pending RSVPs
+          </p>
         </div>
       </div>
 
@@ -394,7 +356,11 @@ export function GuestsPage() {
 
       {filtered.length === 0 && (
         <div className="card mt-4 p-12 text-center">
-          <p className="text-charcoal/50">No guests found matching your search.</p>
+          <Users className="mx-auto h-8 w-8 text-burgundy-300 mb-2" />
+          <p className="font-semibold text-charcoal">Your Guest List is Empty</p>
+          <p className="text-xs text-charcoal/50 mt-1">
+            Click &quot;Add Guest&quot; above to add your family and wedding attendees to track headcount and catering.
+          </p>
         </div>
       )}
 

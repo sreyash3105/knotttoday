@@ -6,7 +6,8 @@ import { VendorCard } from '@/components/VendorCard';
 import { BookingModal } from '@/components/BookingModal';
 import { SearchBar } from '@/components/SearchFilter';
 import { useLanguage } from '@/hooks/useLanguage';
-import { vendorsData, images } from '@/data/mockData';
+import { useServices } from '@/context/ServicesContext';
+import { images } from '@/data/mockData';
 import type { Vendor } from '@/types';
 
 interface VendorPageProps {
@@ -31,33 +32,49 @@ export function VendorPage({
   serviceCategories,
 }: VendorPageProps) {
   const { t } = useLanguage();
+  const { services } = useServices();
   const [search, setSearch] = useState('');
   const [selectedTag, setSelectedTag] = useState<string>('all');
   const [bookingVendor, setBookingVendor] = useState<Vendor | null>(null);
 
+  // Active wedding services from database
+  const approvedServices = services;
+
   const allVendors = category
-    ? vendorsData.filter((v) => v.category === category)
-    : vendorsData;
+    ? approvedServices.filter(
+        (v) =>
+          v.category.toLowerCase().includes(category.toLowerCase()) ||
+          category.toLowerCase().includes(v.category.toLowerCase())
+      )
+    : approvedServices;
 
   const filtered = allVendors.filter((v) => {
     // Search keyword matching
+    const name = (v.name || '').toLowerCase();
+    const loc = (v.location || '').toLowerCase();
+    const desc = (v.description || '').toLowerCase();
+    const cat = (v.category || '').toLowerCase();
+    const servicesList = v.services || [];
+    const searchLow = search.toLowerCase();
+    const tagLow = selectedTag.toLowerCase();
+
     const matchSearch =
-      v.name.toLowerCase().includes(search.toLowerCase()) ||
-      v.location.toLowerCase().includes(search.toLowerCase()) ||
-      v.description.toLowerCase().includes(search.toLowerCase()) ||
-      v.services.some((s) => s.toLowerCase().includes(search.toLowerCase()));
+      name.includes(searchLow) ||
+      loc.includes(searchLow) ||
+      desc.includes(searchLow) ||
+      servicesList.some((s) => (s || '').toLowerCase().includes(searchLow));
 
     // Clickable Tag matching
     const matchTag =
       selectedTag === 'all' ||
-      v.services.some(
+      servicesList.some(
         (s) =>
-          s.toLowerCase().includes(selectedTag.toLowerCase()) ||
-          selectedTag.toLowerCase().includes(s.toLowerCase())
+          (s || '').toLowerCase().includes(tagLow) ||
+          tagLow.includes((s || '').toLowerCase())
       ) ||
-      v.name.toLowerCase().includes(selectedTag.toLowerCase()) ||
-      v.description.toLowerCase().includes(selectedTag.toLowerCase()) ||
-      v.category.toLowerCase().includes(selectedTag.toLowerCase());
+      name.includes(tagLow) ||
+      desc.includes(tagLow) ||
+      cat.includes(tagLow);
 
     return matchSearch && matchTag;
   });
@@ -101,16 +118,17 @@ export function VendorPage({
               const isSelected = selectedTag === cat;
 
               // Count matching vendors for this tag
+              const catLow = cat.toLowerCase();
               const count = allVendors.filter(
                 (v) =>
-                  v.services.some(
+                  (v.services || []).some(
                     (s) =>
-                      s.toLowerCase().includes(cat.toLowerCase()) ||
-                      cat.toLowerCase().includes(s.toLowerCase())
+                      (s || '').toLowerCase().includes(catLow) ||
+                      catLow.includes((s || '').toLowerCase())
                   ) ||
-                  v.name.toLowerCase().includes(cat.toLowerCase()) ||
-                  v.description.toLowerCase().includes(cat.toLowerCase()) ||
-                  v.category.toLowerCase().includes(cat.toLowerCase())
+                  (v.name || '').toLowerCase().includes(catLow) ||
+                  (v.description || '').toLowerCase().includes(catLow) ||
+                  (v.category || '').toLowerCase().includes(catLow)
               ).length;
 
               return (
@@ -153,7 +171,7 @@ export function VendorPage({
               {selectedTag}
             </span>
             <span className="text-charcoal/60">
-              ({filtered.length} vendor{filtered.length !== 1 ? 's' : ''} available)
+              ({filtered.length} service{filtered.length !== 1 ? 's' : ''} available)
             </span>
           </div>
           <button
@@ -172,11 +190,11 @@ export function VendorPage({
         <SearchBar
           value={search}
           onChange={setSearch}
-          placeholder="Search vendors by name, service or city location..."
+          placeholder="Search services by name, package or city location..."
         />
       </div>
 
-      {/* Vendor Grid */}
+      {/* Services Grid */}
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {filtered.map((vendor) => (
           <VendorCard
@@ -194,7 +212,7 @@ export function VendorPage({
       {filtered.length === 0 && (
         <div className="card p-12 text-center border-dashed">
           <p className="text-sm font-semibold text-charcoal/60">
-            No vendors found matching &quot;{selectedTag !== 'all' ? selectedTag : search}&quot;.
+            No services found matching &quot;{selectedTag !== 'all' ? selectedTag : search}&quot;.
           </p>
           <button
             type="button"
@@ -224,9 +242,9 @@ export function ServicesPage() {
   return (
     <VendorPage
       title="Services"
-      subtitle="All wedding service vendors"
+      subtitle="All wedding services & experiences"
       pageTitle="Wedding Services Directory"
-      pageDescription="Discover trusted vendors for every aspect of your wedding"
+      pageDescription="Discover bespoke wedding services and luxury packages for your celebration"
       heroImage={images.stageFloral}
       serviceCategories={['Makeup Artists', 'DJ / Music', 'Photography', 'Decoration', 'Catering']}
     />

@@ -1,5 +1,4 @@
 import type { UserRecord, SessionRecord, AuditLogRecord, AuditEventType, DatabaseDump } from './schema';
-import { CUSTOMER_1, CUSTOMER_2 } from '@/data/userProfiles';
 
 const DB_STORAGE_KEY = 'knot_today_db_store_v1';
 const DB_VERSION = 1;
@@ -27,40 +26,25 @@ async function hashPassword(plain: string): Promise<string> {
   return `hash_${Math.abs(hash)}_${normalized.length}`;
 }
 
-// Initial demo users seeded into the DB
-const SEED_USERS: UserRecord[] = [
-  {
-    id: CUSTOMER_1.id,
-    email: CUSTOMER_1.email.toLowerCase(),
-    passwordHash: 'hash_demo_password123', // verified against 'password123'
-    brideName: CUSTOMER_1.brideName,
-    groomName: CUSTOMER_1.groomName,
-    coupleInitials: CUSTOMER_1.coupleInitials,
-    weddingDate: CUSTOMER_1.weddingDate || 'December 18, 2026',
-    location: CUSTOMER_1.location || 'The Leela Palace, Udaipur, Rajasthan',
-    role: 'couple',
-    status: 'active',
-    hasBooking: true,
-    createdAt: '2026-01-15T10:00:00.000Z',
-    updatedAt: new Date().toISOString(),
-    lastLoginAt: new Date().toISOString(),
-  },
-  {
-    id: CUSTOMER_2.id,
-    email: CUSTOMER_2.email.toLowerCase(),
-    passwordHash: 'hash_demo_password123',
-    brideName: CUSTOMER_2.brideName,
-    groomName: CUSTOMER_2.groomName,
-    coupleInitials: CUSTOMER_2.coupleInitials,
-    weddingDate: CUSTOMER_2.weddingDate || 'To Be Decided',
-    location: CUSTOMER_2.location || 'Not Specified Yet',
-    role: 'couple',
-    status: 'active',
-    hasBooking: false,
-    createdAt: '2026-02-01T14:30:00.000Z',
-    updatedAt: new Date().toISOString(),
-  },
-];
+// System Administrator account seeded into the DB
+export const ADMIN_USER_RECORD: UserRecord = {
+  id: 'admin_knot_today',
+  email: 'admin@knottoday.com',
+  passwordHash: 'hash_demo_admin123',
+  brideName: 'Knot Today',
+  groomName: 'Admin',
+  coupleInitials: 'KT',
+  weddingDate: 'Headquarters',
+  location: 'Mumbai, India',
+  role: 'admin',
+  status: 'active',
+  hasBooking: false,
+  createdAt: '2026-01-01T00:00:00.000Z',
+  updatedAt: new Date().toISOString(),
+  lastLoginAt: new Date().toISOString(),
+};
+
+const SEED_USERS: UserRecord[] = [ADMIN_USER_RECORD];
 
 class KnotTodayDatabase {
   private users: UserRecord[] = [];
@@ -79,29 +63,39 @@ class KnotTodayDatabase {
       const raw = localStorage.getItem(DB_STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
-        this.users = Array.isArray(parsed.users) ? parsed.users : [...SEED_USERS];
+        const loadedUsers: UserRecord[] = Array.isArray(parsed.users) ? parsed.users : [];
+        // Filter out any legacy dummy/demo users
+        this.users = loadedUsers.filter(
+          (u) =>
+            u.id !== 'customer_1' &&
+            u.id !== 'customer_2' &&
+            u.email !== 'aishwarya@wedding.com' &&
+            u.email !== 'newuser@wedding.com'
+        );
+        // Ensure admin user is present
+        if (!this.users.some((u) => u.email.toLowerCase() === ADMIN_USER_RECORD.email.toLowerCase())) {
+          this.users.unshift(ADMIN_USER_RECORD);
+        }
         this.sessions = Array.isArray(parsed.sessions) ? parsed.sessions : [];
         this.auditLogs = Array.isArray(parsed.auditLogs) ? parsed.auditLogs : [];
       } else {
-        // First run: Seed demo accounts
+        // First run: Only Admin seeded
         this.users = [...SEED_USERS];
         this.sessions = [];
         this.auditLogs = [
           {
             id: `log_init_${Date.now()}`,
             event: 'REGISTER',
-            details: 'Database initialized with initial demo couples (Aishwarya & Rohan, Vikram & Priya)',
+            details: 'Database initialized. System administrator account configured.',
             timestamp: new Date().toISOString(),
           },
         ];
         this.persist();
       }
 
-      // Also ensure demo users are present if missing
-      for (const seed of SEED_USERS) {
-        if (!this.users.some((u) => u.email.toLowerCase() === seed.email.toLowerCase())) {
-          this.users.push(seed);
-        }
+      // Ensure admin user is always present
+      if (!this.users.some((u) => u.email.toLowerCase() === ADMIN_USER_RECORD.email.toLowerCase())) {
+        this.users.unshift(ADMIN_USER_RECORD);
       }
 
       this.isInitialized = true;
@@ -274,13 +268,17 @@ class KnotTodayDatabase {
       return { success: false, error: 'This account has been deactivated.' };
     }
 
-    // Check demo password fallback or hashed password
+    // Check admin credentials or standard hashed password
     let passwordMatches = false;
-    if (cleanPass === 'password123') {
-      passwordMatches = true;
+    if (user.role === 'admin' || cleanEmail === 'admin@knottoday.com') {
+      passwordMatches = cleanPass === 'admin123' || user.passwordHash === 'hash_demo_admin123';
+      if (!passwordMatches) {
+        const incomingHash = await hashPassword(cleanPass);
+        passwordMatches = incomingHash === user.passwordHash;
+      }
     } else {
       const incomingHash = await hashPassword(cleanPass);
-      passwordMatches = incomingHash === user.passwordHash || user.passwordHash === 'hash_demo_password123';
+      passwordMatches = incomingHash === user.passwordHash;
     }
 
     if (!passwordMatches) {
@@ -292,7 +290,7 @@ class KnotTodayDatabase {
       });
       return {
         success: false,
-        error: 'Invalid password. Try password123 or reset your password.',
+        error: 'Invalid password. Please re-enter your password or use forgot password.',
       };
     }
 
@@ -349,7 +347,7 @@ class KnotTodayDatabase {
 
   public updateUser(
     id: string,
-    updates: Partial<Pick<UserRecord, 'brideName' | 'groomName' | 'weddingDate' | 'location'>>
+    updates: Partial<Pick<UserRecord, 'brideName' | 'groomName' | 'weddingDate' | 'location' | 'hasBooking' | 'status'>>
   ): UserRecord | null {
     this.init();
 

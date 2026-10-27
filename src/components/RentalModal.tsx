@@ -5,6 +5,7 @@ import type { JewelleryItem, ClothesItem, RentalRequest } from '@/types';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useToast } from '@/hooks/useToast';
 import { useAuth } from '@/context/AuthContext';
+import { useServices } from '@/context/ServicesContext';
 import { triggerWebhook } from '@/lib/webhook';
 
 interface RentalModalProps {
@@ -18,6 +19,7 @@ export function RentalModal({ isOpen, onClose, item, type }: RentalModalProps) {
   const { t } = useLanguage();
   const { showToast } = useToast();
   const { user, addBookingToCurrentCustomer } = useAuth();
+  const { addBookingRecord } = useServices();
 
   const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState<RentalRequest>({
@@ -36,19 +38,40 @@ export function RentalModal({ isOpen, onClose, item, type }: RentalModalProps) {
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
 
+    const sharedId = `bkg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const initialStatus = 'Pending';
+
     addBookingToCurrentCustomer({
+      id: sharedId,
       vendorName: `${type === 'jewellery' ? 'Jewellery' : 'Clothes'} Rental`,
       serviceName: item.name,
       category: item.category,
       date: form.rentalDate,
-      status: 'Confirmed',
+      status: initialStatus,
       price: `₹${item.rentalPrice.toLocaleString('en-IN')}`,
       image: item.image,
       details: form.notes,
     }, item.forWhom);
 
+    const resolvedName = user ? `${user.brideName} & ${user.groomName}` : form.customerName || 'Customer';
+
+    // Record in CRM database
+    addBookingRecord({
+      id: sharedId,
+      customerId: user?.id,
+      customerName: resolvedName,
+      customerEmail: user?.email,
+      serviceOrItemName: item.name,
+      category: item.category,
+      bookingType: type,
+      eventDate: form.rentalDate,
+      returnDate: form.returnDate,
+      price: `₹${item.rentalPrice.toLocaleString('en-IN')}`,
+      status: initialStatus,
+      notes: `${form.notes ? form.notes + '. ' : ''}${size ? `Size: ${size}` : ''}`,
+    });
+
     const reqType = type === 'jewellery' ? 'jewellery_rental' : 'clothes_rental';
-    const resolvedName = user ? `${user.brideName} & ${user.groomName}` : 'Customer';
     showToast(
       `${type === 'jewellery' ? 'Jewellery' : 'Clothes'} rental request submitted for ${item.name}!`,
       'success'

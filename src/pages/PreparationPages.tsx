@@ -127,29 +127,44 @@ interface PreparationPageProps {
   accentColor: 'burgundy' | 'champagne';
 }
 
-const statusIcon: Record<TaskStatus, typeof CheckSquare> = {
+const statusIcon: Record<string, typeof CheckSquare> = {
   'Completed': CheckSquare,
   'In Progress': CheckSquare,
+  'Confirmed': CheckSquare,
+  'Booked': CheckSquare,
   'Pending': Square,
+  'In Review': Clock,
+  'Declined': Square,
+  'Rejected': Square,
 };
 
-const statusIconColor: Record<TaskStatus, string> = {
+const statusIconColor: Record<string, string> = {
   'Completed': 'text-emerald-600',
   'In Progress': 'text-emerald-600',
+  'Confirmed': 'text-emerald-600',
+  'Booked': 'text-emerald-600',
   'Pending': 'text-burgundy-400',
+  'In Review': 'text-blue-500',
+  'Declined': 'text-rose-500',
+  'Rejected': 'text-rose-500',
 };
 
-// Display labels: internally Pending = "Booked", Completed = "COMPLETED"
-const statusLabel: Record<TaskStatus, string> = {
-  'Pending': 'Booked',
-  'In Progress': 'Booked',
+const statusLabel: Record<string, string> = {
+  'Pending': 'Pending',
+  'In Review': 'In Review',
+  'Confirmed': 'Confirmed',
   'Completed': 'COMPLETED',
+  'Declined': 'Rejected',
+  'Rejected': 'Rejected',
 };
 
-const statusBadgeStyle: Record<TaskStatus, string> = {
-  'Pending': 'bg-amber-50 text-amber-700 border border-amber-200',
-  'In Progress': 'bg-amber-50 text-amber-700 border border-amber-200',
-  'Completed': 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+const statusBadgeStyle: Record<string, string> = {
+  'Pending': 'bg-amber-100 text-amber-800 border border-amber-300 font-semibold',
+  'In Review': 'bg-blue-100 text-blue-800 border border-blue-300 font-semibold',
+  'Confirmed': 'bg-emerald-100 text-emerald-800 border border-emerald-300 font-semibold',
+  'Completed': 'bg-emerald-100 text-emerald-800 border border-emerald-300 font-semibold',
+  'Declined': 'bg-red-100 text-red-800 border border-red-300 font-semibold',
+  'Rejected': 'bg-red-100 text-red-800 border border-red-300 font-semibold',
 };
 
 export function PreparationPage({
@@ -168,25 +183,25 @@ export function PreparationPage({
   const { isLoggedIn, user } = useAuth();
   const { showToast } = useToast();
 
-  const isCustomer1 = isLoggedIn && user?.id === 'customer_1';
   const storageKey = `wedding_services_checklist_${type}_${user?.id || 'visitor'}`;
 
   const [checklist, setChecklist] = useState<ServiceChecklistItem[]>(() => {
     try {
       const saved = localStorage.getItem(storageKey);
       if (saved) {
-        const parsed: ServiceChecklistItem[] = JSON.parse(saved);
-        const filtered = parsed.filter(
-          (item) => !REMOVED_SERVICE_NAMES.has(item.serviceName) && !REMOVED_IDS.has(item.id)
-        );
-        localStorage.setItem(storageKey, JSON.stringify(filtered));
-        return filtered;
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          const filtered = parsed.filter(
+            (item) => !REMOVED_SERVICE_NAMES.has(item.serviceName) && !REMOVED_IDS.has(item.id)
+          );
+          localStorage.setItem(storageKey, JSON.stringify(filtered));
+          return filtered;
+        }
       }
     } catch (e) {
       console.error('Error loading checklist', e);
     }
-    const isBlankSlate = !user || user.id === 'customer_2';
-    return isBlankSlate ? [] : defaultChecklist;
+    return [];
   });
 
   useEffect(() => {
@@ -194,11 +209,13 @@ export function PreparationPage({
       try {
         const saved = localStorage.getItem(storageKey);
         if (saved) {
-          const parsed: ServiceChecklistItem[] = JSON.parse(saved);
-          const filtered = parsed.filter(
-            (item) => !REMOVED_SERVICE_NAMES.has(item.serviceName) && !REMOVED_IDS.has(item.id)
-          );
-          setChecklist(filtered);
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            const filtered = parsed.filter(
+              (item) => !REMOVED_SERVICE_NAMES.has(item.serviceName) && !REMOVED_IDS.has(item.id)
+            );
+            setChecklist(filtered);
+          }
         }
       } catch (e) {
         console.error('Error reloading checklist', e);
@@ -278,80 +295,11 @@ export function PreparationPage({
 
   const accent = accentColor === 'burgundy' ? 'bg-burgundy-600' : 'bg-champagne-500';
 
-  // Render Confirmed Booked Appointments for Customer 1 (Aishwarya & Rohan)
-  if (isCustomer1) {
-    return (
-      <Layout title={title} subtitle={`${user.brideName} & ${user.groomName}'s ${title} Preparation`}>
-        <PageHeader
-          title={`${type === 'bride' ? user.brideName : user.groomName}'s ${title} Preparation`}
-          description={pageDescription}
-          image={heroImage}
-        />
-
-        <div className="mb-6 card p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-base font-bold text-burgundy-900">{title} Preparation Checklist</h3>
-            <span className="text-xs text-charcoal/50">
-              {confirmedPrepData.filter((p) => p.status === 'Completed').length} / {confirmedPrepData.length} completed
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-            {sections.map((section) => (
-              <div key={section} className="flex items-center gap-2 rounded-lg border border-burgundy-50 px-3 py-2">
-                <span className={`h-2 w-2 rounded-full ${accent}`} />
-                <span className="text-xs font-medium text-charcoal/70">{section}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="grid gap-6 lg:grid-cols-3">
-          <div className="card p-5 lg:col-span-2">
-            <h3 className="mb-4 text-base font-bold text-burgundy-900">Confirmed Appointments & Checklist</h3>
-            <div className="space-y-2">
-              {confirmedPrepData.map((item) => {
-                const Icon = statusIcon[item.status];
-                return (
-                  <div key={item.id} className="flex items-start gap-3 rounded-xl border border-burgundy-50 p-3">
-                    <Icon className={`mt-0.5 h-5 w-5 flex-shrink-0 ${statusIconColor[item.status]}`} />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-semibold text-charcoal">{item.appointment}</p>
-                        <StatusBadge status={item.status} type="task" />
-                      </div>
-                      <div className="mt-1 flex flex-wrap gap-3 text-xs text-charcoal/50">
-                        <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {item.time}</span>
-                        <span className="flex items-center gap-1"><User className="h-3 w-3" /> {item.vendor}</span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="card p-5">
-            <h3 className="mb-4 text-base font-bold text-burgundy-900">Confirmed Day Schedule</h3>
-            <div className="space-y-3">
-              {confirmedSchedule.map((item, i) => (
-                <div key={i} className="relative border-l-2 border-burgundy-100 pl-4">
-                  <div className={`absolute -left-[5px] top-1 h-2.5 w-2.5 rounded-full ${accent}`} />
-                  <p className="text-xs font-semibold text-burgundy-700">{item.time}</p>
-                  <p className="text-sm font-medium text-charcoal">{item.title}</p>
-                  <p className="text-xs text-charcoal/50">{item.location}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </Layout>
-    );
-  }
+  // Render Interactive Services Checklist for All Users
 
   // Render Interactive Services Checklist for Visitors & New Users
-  const resolvedSubtitle = user ? `${user.brideName} & ${user.groomName}'s ${title} Preparation` : defaultSubtitle;
-  const resolvedTitle = user ? `${type === 'bride' ? user.brideName : user.groomName}'s ${title} Services Checklist` : pageTitle;
+  const resolvedSubtitle = user ? `${user.brideName || 'Bride'} & ${user.groomName || 'Groom'}'s ${title} Preparation` : defaultSubtitle;
+  const resolvedTitle = user ? `${type === 'bride' ? (user.brideName || 'Bride') : (user.groomName || 'Groom')}'s ${title} Services Checklist` : pageTitle;
 
   return (
     <Layout title={title} subtitle={resolvedSubtitle}>
@@ -416,7 +364,7 @@ export function PreparationPage({
         ) : (
         <div className="space-y-3">
           {checklist.map((item) => {
-            const Icon = statusIcon[item.status];
+            const Icon = statusIcon[item.status] || CheckSquare;
             return (
               <div
                 key={item.id}
@@ -430,7 +378,7 @@ export function PreparationPage({
                   onClick={() => toggleStatus(item.id)}
                   className="flex cursor-pointer items-start gap-3 min-w-0 flex-1"
                 >
-                  <Icon className={`mt-1 h-5 w-5 flex-shrink-0 ${statusIconColor[item.status]}`} />
+                  <Icon className={`mt-1 h-5 w-5 flex-shrink-0 ${statusIconColor[item.status] || 'text-burgundy-400'}`} />
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <h4
@@ -449,12 +397,17 @@ export function PreparationPage({
                     <p className="mt-1 text-xs font-semibold text-burgundy-700">
                       Est. Price: {item.estimatedPrice}
                     </p>
+                    {(item as any).rejectionReason && ((item as any).status === 'Rejected' || (item as any).status === 'Declined') && (
+                      <div className="mt-2 rounded-lg bg-rose-50 border border-rose-200 px-2.5 py-1.5 text-xs text-rose-700">
+                        <strong className="font-semibold">Reason:</strong> {(item as any).rejectionReason}
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2 self-end sm:self-center">
-                  <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusBadgeStyle[item.status]}`}>
-                    {statusLabel[item.status]}
+                  <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusBadgeStyle[item.status] || 'bg-stone-100 text-stone-700'}`}>
+                    {statusLabel[item.status] || item.status}
                   </span>
                   <button
                     type="button"

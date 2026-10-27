@@ -70,14 +70,27 @@ export function DashboardPage() {
     try {
       const journeyKey = `wedding_journey_stages_${userId}`;
       const savedJourney = localStorage.getItem(journeyKey);
-      const stages: WeddingEvent[] = savedJourney ? JSON.parse(savedJourney) : defaultJourneyStages;
+      let stages: WeddingEvent[] = defaultJourneyStages.map((s) => ({
+        ...s,
+        status: (s.status || 'Upcoming') as WeddingEvent['status'],
+        bookingStatus: (s.bookingStatus || 'Recommended') as WeddingEvent['bookingStatus'],
+      }));
+      if (savedJourney) {
+        const parsed = JSON.parse(savedJourney);
+        if (Array.isArray(parsed) && parsed.length > 0) stages = parsed;
+      }
       setMilestonesCount(stages.length);
       setCompletedMilestones(stages.filter((s) => s.status === 'Completed').length);
       setUpcomingMilestones(stages.filter((s) => s.status !== 'Completed').slice(0, 4));
     } catch (e) {
       console.error(e);
-      setMilestonesCount(defaultJourneyStages.length);
-      setUpcomingMilestones(defaultJourneyStages.slice(0, 4));
+      const fallback = defaultJourneyStages.map((s) => ({
+        ...s,
+        status: 'Upcoming' as const,
+        bookingStatus: 'Recommended' as const,
+      }));
+      setMilestonesCount(fallback.length);
+      setUpcomingMilestones(fallback.slice(0, 4));
     }
 
     // 2. Guests Headcount & Parties
@@ -86,11 +99,10 @@ export function DashboardPage() {
       const savedGuests = localStorage.getItem(guestsKey);
       let gList: Guest[] = [];
       if (savedGuests) {
-        gList = JSON.parse(savedGuests);
-      } else {
-        gList = isBlankSlate ? [] : defaultGuestsData;
+        const parsed = JSON.parse(savedGuests);
+        if (Array.isArray(parsed)) gList = parsed;
       }
-      const totalPeople = gList.reduce((sum, g) => sum + (Number(g.numberOfGuests) || 1), 0);
+      const totalPeople = gList.reduce((sum, g) => sum + (Number(g?.numberOfGuests) || 1), 0);
       setGuestsHeadcount(totalPeople);
       setGuestsParties(gList.length);
     } catch (e) {
@@ -105,9 +117,8 @@ export function DashboardPage() {
       const savedTasks = localStorage.getItem(tasksKey);
       let tList: Task[] = [];
       if (savedTasks) {
-        tList = JSON.parse(savedTasks);
-      } else {
-        tList = isBlankSlate ? [] : defaultTasksData;
+        const parsed = JSON.parse(savedTasks);
+        if (Array.isArray(parsed)) tList = parsed;
       }
       setTasksTotal(tList.length);
       setTasksCompleted(tList.filter((t) => t.status === 'Completed').length);
@@ -119,21 +130,23 @@ export function DashboardPage() {
 
     // 4. Booked Services Count
     let bookedCount = 0;
-    if (user?.userBookings && user.userBookings.length > 0) {
+    if (user?.userBookings && Array.isArray(user.userBookings) && user.userBookings.length > 0) {
       bookedCount = user.userBookings.length;
-    } else if (!isBlankSlate) {
-      bookedCount = bookedServices.length;
+    } else {
+      bookedCount = 0;
     }
 
     // Check checklist items from localStorage
     try {
       const brideSaved = localStorage.getItem(`wedding_services_checklist_bride_${userId}`);
       const groomSaved = localStorage.getItem(`wedding_services_checklist_groom_${userId}`);
-      const brideChecklist = brideSaved ? JSON.parse(brideSaved) : [];
-      const groomChecklist = groomSaved ? JSON.parse(groomSaved) : [];
+      const brideParsed = brideSaved ? JSON.parse(brideSaved) : [];
+      const groomParsed = groomSaved ? JSON.parse(groomSaved) : [];
+      const brideChecklist = Array.isArray(brideParsed) ? brideParsed : [];
+      const groomChecklist = Array.isArray(groomParsed) ? groomParsed : [];
       const checklistBooked =
-        brideChecklist.filter((i: { status?: string }) => i.status === 'Booked' || i.status === 'Completed').length +
-        groomChecklist.filter((i: { status?: string }) => i.status === 'Booked' || i.status === 'Completed').length;
+        brideChecklist.filter((i: { status?: string }) => i.status === 'Booked' || i.status === 'Completed' || i.status === 'Confirmed').length +
+        groomChecklist.filter((i: { status?: string }) => i.status === 'Booked' || i.status === 'Completed' || i.status === 'Confirmed').length;
       if (checklistBooked > 0) {
         bookedCount = Math.max(bookedCount, checklistBooked);
       }
@@ -336,20 +349,43 @@ export function DashboardPage() {
               <div
                 key={b.id}
                 onClick={() => navigate('/bill')}
-                className="card flex items-center gap-4 p-4 border-l-4 border-l-emerald-500 cursor-pointer hover:shadow-md transition-shadow"
+                className={`card flex items-center gap-4 p-4 border-l-4 cursor-pointer hover:shadow-md transition-shadow ${
+                  b.status === 'Confirmed' || b.status === 'Completed'
+                    ? 'border-l-emerald-500'
+                    : b.status === 'Declined' || b.status === 'Rejected'
+                    ? 'border-l-rose-500 bg-rose-50/20'
+                    : b.status === 'In Review'
+                    ? 'border-l-blue-500'
+                    : 'border-l-amber-500'
+                }`}
               >
                 <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl bg-burgundy-100">
                   <img src={b.image || images.photography} alt={b.serviceName} className="h-full w-full object-cover" />
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
-                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                        b.status === 'Confirmed' || b.status === 'Completed'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : b.status === 'Declined' || b.status === 'Rejected'
+                          ? 'bg-rose-100 text-rose-800'
+                          : b.status === 'In Review'
+                          ? 'bg-blue-100 text-blue-800'
+                          : 'bg-amber-100 text-amber-800'
+                      }`}
+                    >
                       {b.status}
                     </span>
                     <span className="text-xs font-bold text-burgundy-700">{b.price}</span>
                   </div>
                   <h4 className="mt-1 text-sm font-bold text-burgundy-950">{b.serviceName || b.category}</h4>
                   <p className="text-xs text-charcoal/60">{b.vendorName}</p>
+                  {b.rejectionReason && (
+                    <div className="mt-1.5 rounded-lg bg-rose-50 border border-rose-200 px-2 py-1 text-[11px] text-rose-700 leading-tight">
+                      <strong>Reason:</strong> {b.rejectionReason}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

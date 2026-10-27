@@ -30,6 +30,7 @@ interface BillItem {
   priceString: string;
   priceNumber: number;
   status: string;
+  rejectionReason?: string;
   source: 'bride' | 'groom' | 'others';
 }
 
@@ -41,6 +42,19 @@ function parsePrice(priceStr?: string | number): number {
   const nums = matches.map((m) => parseInt(m.replace(/,/g, ''), 10)).filter((n) => !isNaN(n));
   if (nums.length === 0) return 0;
   return nums[0];
+}
+
+function getStatusBadgeStyle(status: string): string {
+  if (status === 'COMPLETED' || status === 'Confirmed' || status === 'Completed') {
+    return 'bg-emerald-50 text-emerald-800 border border-emerald-300';
+  }
+  if (status === 'Rejected' || status === 'Declined') {
+    return 'bg-rose-50 text-rose-800 border border-rose-300';
+  }
+  if (status === 'In Review') {
+    return 'bg-blue-50 text-blue-800 border border-blue-300';
+  }
+  return 'bg-amber-50 text-amber-800 border border-amber-300';
 }
 
 export function BillPage() {
@@ -67,7 +81,10 @@ export function BillPage() {
     let brideRaw: ServiceChecklistItem[] = [];
     try {
       const saved = localStorage.getItem(brideKey);
-      if (saved) brideRaw = JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) brideRaw = parsed;
+      }
     } catch (e) {
       console.error(e);
     }
@@ -77,8 +94,9 @@ export function BillPage() {
       name: item.serviceName,
       category: item.category,
       priceString: item.estimatedPrice || 'On Request',
-      priceNumber: parsePrice(item.estimatedPrice),
-      status: item.status === 'Completed' ? 'COMPLETED' : 'Booked',
+      priceNumber: (item.status as string) === 'Rejected' || (item.status as string) === 'Declined' ? 0 : parsePrice(item.estimatedPrice),
+      status: item.status || 'Pending',
+      rejectionReason: (item as any).rejectionReason,
       source: 'bride',
     }));
 
@@ -86,7 +104,10 @@ export function BillPage() {
     let groomRaw: ServiceChecklistItem[] = [];
     try {
       const saved = localStorage.getItem(groomKey);
-      if (saved) groomRaw = JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) groomRaw = parsed;
+      }
     } catch (e) {
       console.error(e);
     }
@@ -96,8 +117,9 @@ export function BillPage() {
       name: item.serviceName,
       category: item.category,
       priceString: item.estimatedPrice || 'On Request',
-      priceNumber: parsePrice(item.estimatedPrice),
-      status: item.status === 'Completed' ? 'COMPLETED' : 'Booked',
+      priceNumber: (item.status as string) === 'Rejected' || (item.status as string) === 'Declined' ? 0 : parsePrice(item.estimatedPrice),
+      status: item.status || 'Pending',
+      rejectionReason: (item as any).rejectionReason,
       source: 'groom',
     }));
 
@@ -112,9 +134,10 @@ export function BillPage() {
             id: b.id,
             name: b.vendorName ? `${b.vendorName} (${b.category || b.serviceName})` : b.serviceName || 'Vendor Service',
             category: b.category || 'Wedding Service',
-            priceString: String(b.price || 'Confirmed'),
-            priceNumber: parsePrice(b.price),
-            status: 'Confirmed',
+            priceString: String(b.price || (b.status === 'Rejected' ? 'Rejected' : 'Pending')),
+            priceNumber: b.status === 'Rejected' || b.status === 'Declined' ? 0 : parsePrice(b.price),
+            status: b.status || 'Pending',
+            rejectionReason: b.rejectionReason,
             source: 'others',
           });
         }
@@ -124,20 +147,22 @@ export function BillPage() {
     try {
       const savedTasks = localStorage.getItem(tasksKey);
       if (savedTasks) {
-        const tasks: Task[] = JSON.parse(savedTasks);
-        tasks.forEach((t) => {
-          if (!oItems.some((existing) => existing.name.includes(t.name) || t.name.includes(existing.name))) {
-            oItems.push({
-              id: t.id,
-              name: t.name,
-              category: t.category,
-              priceString: 'Included in Contract',
-              priceNumber: 0,
-              status: t.status === 'Completed' ? 'COMPLETED' : 'Booked',
-              source: 'others',
-            });
-          }
-        });
+        const tasks = JSON.parse(savedTasks);
+        if (Array.isArray(tasks)) {
+          tasks.forEach((t: Task) => {
+            if (!oItems.some((existing) => existing.name.includes(t.name) || t.name.includes(existing.name))) {
+              oItems.push({
+                id: t.id,
+                name: t.name,
+                category: t.category,
+                priceString: 'Included in Contract',
+                priceNumber: 0,
+                status: t.status === 'Completed' ? 'COMPLETED' : t.status || 'Pending',
+                source: 'others',
+              });
+            }
+          });
+        }
       }
     } catch (e) {
       console.error(e);
@@ -147,13 +172,14 @@ export function BillPage() {
     try {
       const savedGuests = localStorage.getItem(guestsKey);
       if (savedGuests) {
-        setGuests(JSON.parse(savedGuests));
+        const parsed = JSON.parse(savedGuests);
+        setGuests(Array.isArray(parsed) ? parsed : []);
       } else {
-        setGuests(guestsData);
+        setGuests([]);
       }
     } catch (e) {
       console.error(e);
-      setGuests(guestsData);
+      setGuests([]);
     }
 
     // 5. Load Plate Rate
@@ -212,7 +238,7 @@ export function BillPage() {
   const othersTotal = otherItems.reduce((acc, i) => acc + i.priceNumber, 0);
   const grandTotal = brideTotal + groomTotal + othersTotal + dynamicFoodBill;
 
-  const totalItemsCount = brideItems.length + groomItems.length + otherItems.length + 1; // +1 for Catering
+  const totalItemsCount = brideItems.length + groomItems.length + otherItems.length + (totalGuestPeople > 0 ? 1 : 0);
 
   const handlePrint = () => {
     window.print();
@@ -418,10 +444,15 @@ export function BillPage() {
                           {item.category}
                         </span>
                         <span>&bull;</span>
-                        <span className={item.status === 'COMPLETED' ? 'text-emerald-600 font-semibold' : 'text-amber-600'}>
+                        <span className={`rounded-md px-2 py-0.5 text-[11px] font-bold ${getStatusBadgeStyle(item.status)}`}>
                           {item.status}
                         </span>
                       </div>
+                      {item.rejectionReason && (item.status === 'Rejected' || item.status === 'Declined') && (
+                        <div className="mt-1.5 rounded-md bg-rose-50 border border-rose-200 px-2 py-1 text-[11px] text-rose-700">
+                          <strong>Reason:</strong> {item.rejectionReason}
+                        </div>
+                      )}
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-bold text-burgundy-900">{item.priceString}</p>
@@ -470,10 +501,15 @@ export function BillPage() {
                           {item.category}
                         </span>
                         <span>&bull;</span>
-                        <span className={item.status === 'COMPLETED' ? 'text-emerald-600 font-semibold' : 'text-amber-600'}>
+                        <span className={`rounded-md px-2 py-0.5 text-[11px] font-bold ${getStatusBadgeStyle(item.status)}`}>
                           {item.status}
                         </span>
                       </div>
+                      {item.rejectionReason && (item.status === 'Rejected' || item.status === 'Declined') && (
+                        <div className="mt-1.5 rounded-md bg-rose-50 border border-rose-200 px-2 py-1 text-[11px] text-rose-700">
+                          <strong>Reason:</strong> {item.rejectionReason}
+                        </div>
+                      )}
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-bold text-burgundy-900">{item.priceString}</p>
@@ -522,8 +558,15 @@ export function BillPage() {
                           {item.category}
                         </span>
                         <span>&bull;</span>
-                        <span className="text-emerald-600 font-semibold">{item.status}</span>
+                        <span className={`rounded-md px-2 py-0.5 text-[11px] font-bold ${getStatusBadgeStyle(item.status)}`}>
+                          {item.status}
+                        </span>
                       </div>
+                      {item.rejectionReason && (item.status === 'Rejected' || item.status === 'Declined') && (
+                        <div className="mt-1.5 rounded-md bg-rose-50 border border-rose-200 px-2 py-1 text-[11px] text-rose-700">
+                          <strong>Reason:</strong> {item.rejectionReason}
+                        </div>
+                      )}
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-bold text-burgundy-900">{item.priceString}</p>

@@ -5,6 +5,7 @@ import type { Vendor } from '@/types';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useToast } from '@/hooks/useToast';
 import { useAuth } from '@/context/AuthContext';
+import { useServices } from '@/context/ServicesContext';
 import { triggerWebhook } from '@/lib/webhook';
 
 interface BookingModalProps {
@@ -17,6 +18,7 @@ export function BookingModal({ isOpen, onClose, vendor }: BookingModalProps) {
   const { t } = useLanguage();
   const { showToast } = useToast();
   const { user, addBookingToCurrentCustomer } = useAuth();
+  const { addBookingRecord } = useServices();
   const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState({
     eventDate: '',
@@ -29,18 +31,39 @@ export function BookingModal({ isOpen, onClose, vendor }: BookingModalProps) {
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
 
+    const sharedId = `bkg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const initialStatus = 'Pending';
+
     addBookingToCurrentCustomer({
+      id: sharedId,
       vendorName: vendor.name,
-      serviceName: vendor.category,
+      serviceName: vendor.name,
       category: vendor.category,
       date: form.eventDate,
-      status: 'Confirmed',
+      status: initialStatus,
       price: vendor.priceRange,
       image: vendor.image,
       details: form.notes,
     });
 
     const resolvedName = user ? `${user.brideName} & ${user.groomName}` : 'Customer';
+
+    // Store in company CRM database
+    addBookingRecord({
+      id: sharedId,
+      customerId: user?.id,
+      customerName: resolvedName,
+      customerEmail: user?.email,
+      customerPhone: user?.location,
+      serviceOrItemName: vendor.name,
+      category: vendor.category,
+      bookingType: 'service',
+      eventDate: form.eventDate,
+      price: vendor.priceRange,
+      status: initialStatus,
+      notes: form.notes,
+    });
+
     showToast(`Booking request sent to ${vendor.name}!`, 'success');
     triggerWebhook('service_booking', {
       vendor: vendor.name,
@@ -66,8 +89,8 @@ export function BookingModal({ isOpen, onClose, vendor }: BookingModalProps) {
           </div>
           <h4 className="text-lg font-semibold text-burgundy-900">Request Confirmed!</h4>
           <p className="mt-2 text-sm text-charcoal/60">
-            Your booking request for <strong>{vendor.name}</strong> has been sent.
-            They will get back to you within 24 hours to confirm availability.
+            Your booking request for <strong>{vendor.name}</strong> has been submitted.
+            Our wedding planning team will get back to you shortly to confirm arrangements.
           </p>
           <button onClick={handleClose} className="btn-primary mt-6 w-full">
             {t('close')}

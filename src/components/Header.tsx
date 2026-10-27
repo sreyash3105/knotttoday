@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Search, Bell, Globe, Menu, LogIn, LogOut, LayoutDashboard, Pencil } from 'lucide-react';
+import { Search, Bell, Globe, Menu, LogIn, LogOut, LayoutDashboard, Pencil, ShieldCheck } from 'lucide-react';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useAuth } from '@/context/AuthContext';
 import { EditCoupleNamesModal } from '@/components/EditCoupleNamesModal';
@@ -176,14 +176,14 @@ export function Header({ title, subtitle, onMenuClick, onNavigate }: HeaderProps
               className="flex items-center gap-2 rounded-full p-0.5 transition-transform hover:scale-105"
             >
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-burgundy-600 to-rose-500 text-sm font-semibold text-white shadow-sm ring-2 ring-white">
-                {user.coupleInitials}
+                {user.coupleInitials || (user.brideName ? `${user.brideName[0]}&${user.groomName?.[0] || ''}` : 'KT')}
               </div>
             </button>
             {showUserDropdown && (
               <div className="absolute right-0 mt-2 w-64 rounded-2xl border border-burgundy-100 bg-white p-2 shadow-xl">
                 <div className="border-b border-burgundy-50 px-3 py-2">
                   <p className="text-xs font-bold text-burgundy-900">
-                    {user.brideName} & {user.groomName}
+                    {user.brideName || 'Bride'} &amp; {user.groomName || 'Groom'}
                   </p>
                   <p className="text-xs text-charcoal/60">{user.email}</p>
                 </div>
@@ -219,7 +219,7 @@ export function Header({ title, subtitle, onMenuClick, onNavigate }: HeaderProps
                   className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50"
                 >
                   <LogOut className="h-4 w-4" />
-                  Log Out (Public View)
+                  Log Out
                 </button>
               </div>
             )}

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, Link } from 'react-router-dom';
 import {
   LayoutDashboard,
   Route,
@@ -174,7 +174,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           <div className="mx-4 mb-3 rounded-xl border border-champagne-200/50 bg-gradient-to-br from-champagne-50 to-rose-50 px-4 py-3">
             <div className="flex items-center justify-between">
               <p className="font-serif text-base font-semibold text-burgundy-800">
-                {user.brideName} & {user.groomName}
+                {user.brideName || 'Bride'} &amp; {user.groomName || 'Groom'}
               </p>
               <button
                 type="button"

@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { X, Lock, Mail, Sparkles, CheckCircle2, UserCheck, UserPlus } from 'lucide-react';
+import { X, Lock, Mail, ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
-import { CUSTOMER_1, CUSTOMER_2 } from '@/data/userProfiles';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -9,7 +9,7 @@ interface LoginModalProps {
 }
 
 export function LoginModal({ isOpen, onClose }: LoginModalProps) {
-  const { loginAs, loginWithCredentials } = useAuth();
+  const { loginWithCredentials } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -17,13 +17,17 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) {
       setError('Please enter your email address');
       return;
     }
-    loginWithCredentials(email);
+    const res = await loginWithCredentials(email, password);
+    if (!res.success) {
+      setError(res.message || 'Authentication failed. Please check your credentials.');
+      return;
+    }
     onClose();
   };
 
@@ -43,74 +47,10 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-burgundy-700 text-white shadow-md">
             <Lock className="h-6 w-6" />
           </div>
-          <h2 className="text-2xl font-bold text-burgundy-950">Client Portal Login</h2>
+          <h2 className="text-2xl font-bold text-burgundy-950">Couple Portal Sign In</h2>
           <p className="mt-1 text-xs text-charcoal/60">
-            Select a dummy user profile or enter credentials
+            Sign in with your registered wedding account credentials
           </p>
-        </div>
-
-        {/* Quick Demo Credentials Selection */}
-        <div className="mb-6 space-y-3">
-          <p className="text-xs font-bold uppercase tracking-wider text-burgundy-700">
-            ⚡ Quick Demo Accounts
-          </p>
-
-          {/* Customer 1 */}
-          <button
-            onClick={() => {
-              loginAs(CUSTOMER_1);
-              onClose();
-            }}
-            className="flex w-full items-center justify-between rounded-2xl border border-champagne-300 bg-gradient-to-r from-champagne-50 to-rose-50 p-3.5 text-left transition-all hover:border-champagne-500 hover:shadow-md"
-          >
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-burgundy-700 text-xs font-bold text-white shadow">
-                {CUSTOMER_1.coupleInitials}
-              </div>
-              <div>
-                <p className="text-sm font-bold text-burgundy-900">
-                  {CUSTOMER_1.brideName} & {CUSTOMER_1.groomName} (Customer 1)
-                </p>
-                <p className="text-xs text-charcoal/60">
-                  <span className="font-semibold text-emerald-600">Existing Booking</span> • {CUSTOMER_1.email}
-                </p>
-              </div>
-            </div>
-            <UserCheck className="h-5 w-5 text-burgundy-700" />
-          </button>
-
-          {/* Customer 2 - Blank Slate */}
-          <button
-            onClick={() => {
-              loginAs(CUSTOMER_2);
-              onClose();
-            }}
-            className="flex w-full items-center justify-between rounded-2xl border border-burgundy-200 bg-burgundy-50/60 p-3.5 text-left transition-all hover:border-burgundy-400 hover:shadow-md"
-          >
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-rose-500 text-xs font-bold text-white shadow">
-                {CUSTOMER_2.coupleInitials}
-              </div>
-              <div>
-                <p className="text-sm font-bold text-burgundy-900">
-                  {CUSTOMER_2.brideName} & {CUSTOMER_2.groomName} (Customer 2)
-                </p>
-                <p className="text-xs text-charcoal/60">
-                  <span className="font-semibold text-burgundy-600">Brand New User</span> • Blank Slate
-                </p>
-              </div>
-            </div>
-            <UserPlus className="h-5 w-5 text-burgundy-700" />
-          </button>
-        </div>
-
-        <div className="relative mb-6 text-center">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-burgundy-100" />
-          </div>
-          <span className="relative bg-white px-3 text-xs font-semibold text-charcoal/40">
-            or login with credentials
-          </span>
         </div>
 
         {/* Credentials Form */}
@@ -129,9 +69,10 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
               <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-charcoal/40" />
               <input
                 type="email"
+                required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="aishwarya@wedding.com or newuser@wedding.com"
+                placeholder="couple@wedding.com"
                 className="w-full rounded-xl border border-burgundy-100 py-2.5 pl-9 pr-3 text-sm focus:border-burgundy-400 focus:outline-none focus:ring-2 focus:ring-burgundy-100"
               />
             </div>
@@ -145,24 +86,33 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
               <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-charcoal/40" />
               <input
                 type="password"
+                required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 className="w-full rounded-xl border border-burgundy-100 py-2.5 pl-9 pr-3 text-sm focus:border-burgundy-400 focus:outline-none focus:ring-2 focus:ring-burgundy-100"
               />
             </div>
-            <p className="mt-1 text-[11px] text-charcoal/40">
-              Default password: <code className="font-mono text-burgundy-700">password123</code>
-            </p>
           </div>
 
           <button
             type="submit"
             className="w-full rounded-xl bg-burgundy-700 py-3 text-sm font-bold text-white shadow-md transition-colors hover:bg-burgundy-800"
           >
-            Log In
+            Sign In
           </button>
         </form>
+
+        <div className="mt-5 border-t border-stone-100 pt-4 text-center">
+          <Link
+            to="/login"
+            onClick={onClose}
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-burgundy-900 hover:underline"
+          >
+            <span>Don't have an account? Register as New Couple</span>
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
       </div>
     </div>
   );

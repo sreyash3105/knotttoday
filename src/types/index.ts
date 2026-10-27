@@ -50,7 +50,15 @@ export interface Vendor {
   phone: string;
   whatsapp: string;
   services: string[];
+  contactPerson?: string;
+  email?: string;
+  cuisines?: string[];
+  menuDetails?: string;
+  equipment?: string[];
+  acceptingBookings?: boolean;
 }
+
+export type WeddingService = Vendor;
 
 export interface JewelleryItem {
   id: string;

@@ -35,12 +35,7 @@ import {
 import { BookingModal } from '@/components/BookingModal';
 import { RentalModal } from '@/components/RentalModal';
 import { BrandLogo } from '@/components/BrandLogo';
-import {
-  vendorsData,
-  jewelleryData,
-  clothesData,
-  images,
-} from '@/data/mockData';
+import { images } from '@/data/mockData';
 import type { Vendor, JewelleryItem, ClothesItem } from '@/types';
 
 export function PublicServicesDashboard() {

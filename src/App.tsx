@@ -1,11 +1,12 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { LanguageProvider, ToastProvider } from '@/components/providers';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { ServicesProvider } from '@/context/ServicesContext';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { PublicServicesDashboard } from '@/pages/PublicServicesDashboard';
 import { LoginPage } from '@/pages/LoginPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { JourneyPage } from '@/pages/JourneyPage';
-import { EventsPage } from '@/pages/EventsPage';
 import { BridePage, GroomPage } from '@/pages/PreparationPages';
 import { GuestsPage } from '@/pages/GuestsPage';
 import {
@@ -19,11 +20,11 @@ import {
 import { JewelleryPage, ClothesPage } from '@/pages/RentalPages';
 import { TasksPage } from '@/pages/TasksPage';
 import { BillPage } from '@/pages/BillPage';
-import { BudgetPage } from '@/pages/BudgetPage';
 import { NotificationsPage } from '@/pages/NotificationsPage';
 import { LanguagePage } from '@/pages/LanguagePage';
 import { SupportPage } from '@/pages/SupportPage';
 import { SangeetPage } from '@/pages/SangeetPage';
+import { CompanyCrmPage } from '@/pages/CompanyCrmPage';
 
 function ProtectedRoute({ children }: { children: JSX.Element }) {
   const { isLoggedIn } = useAuth();
@@ -43,6 +44,10 @@ function AppRoutes() {
       {/* Home Route: Public Services Marketplace when Logged Out, Customer Dashboard when Logged In */}
       <Route path="/" element={isLoggedIn ? <DashboardPage /> : <PublicServicesDashboard />} />
       <Route path="/login" element={<LoginPage />} />
+
+      {/* Company CRM & Service Management Portal */}
+      <Route path="/crm" element={<CompanyCrmPage />} />
+      <Route path="/admin" element={<CompanyCrmPage />} />
 
       {/* Publicly Accessible Marketplace & Catalog Pages */}
       <Route path="/services" element={<ServicesPage />} />
@@ -116,21 +121,38 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+
+      {/* Aliases for alternate or commonly typed URLs */}
+      <Route path="/dashboard" element={<Navigate to="/" replace />} />
+      <Route path="/vendors" element={<Navigate to="/services" replace />} />
+      <Route path="/venues" element={<Navigate to="/services" replace />} />
+      <Route path="/packages" element={<Navigate to="/services" replace />} />
+      <Route path="/vendor-register" element={<Navigate to="/services" replace />} />
+      <Route path="/vendor-dashboard" element={<Navigate to="/crm" replace />} />
+      <Route path="/vendor-portal" element={<Navigate to="/crm" replace />} />
+      <Route path="/partner" element={<Navigate to="/crm" replace />} />
+      <Route path="/partners" element={<Navigate to="/crm" replace />} />
+
+      {/* Catch-All Fallback: Redirect all unmatched routes to home */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
 
 export default function App() {
   return (
-    <AuthProvider>
-      <LanguageProvider>
-        <ToastProvider>
-          <BrowserRouter>
-            <AppRoutes />
-          </BrowserRouter>
-        </ToastProvider>
-      </LanguageProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <ServicesProvider>
+          <LanguageProvider>
+            <ToastProvider>
+              <BrowserRouter>
+                <AppRoutes />
+              </BrowserRouter>
+            </ToastProvider>
+          </LanguageProvider>
+        </ServicesProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
-

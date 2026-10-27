@@ -56,7 +56,7 @@ export function classifyBookingTarget(
 }
 
 export function routeBookingToStorage(
-  booking: Omit<UserBooking, 'id'>,
+  booking: Omit<UserBooking, 'id'> & { id?: string },
   userId: string,
   forWhomHint?: string
 ): BookingTarget {
@@ -66,6 +66,9 @@ export function routeBookingToStorage(
     booking.vendorName,
     forWhomHint
   );
+
+  const bookingId = booking.id || `svc_${Date.now()}`;
+  const bookingStatus = booking.status || 'Pending';
 
   if (target === 'bride') {
     const brideStorageKey = `wedding_services_checklist_bride_${userId}`;
@@ -78,13 +81,13 @@ export function routeBookingToStorage(
     }
 
     const newItem = {
-      id: `svc_${Date.now()}`,
+      id: bookingId,
       serviceName: booking.serviceName || booking.vendorName || 'Bridal Service',
       category: booking.category || 'Bridal Service',
-      estimatedPrice: String(booking.price || 'Booked'),
+      estimatedPrice: String(booking.price || 'Pending'),
       targetLink: '/services',
-      status: 'Pending', // Shows as 'Booked'
-      notes: booking.details || `Booked with ${booking.vendorName || ''}`,
+      status: bookingStatus,
+      notes: booking.details || `Requested from ${booking.vendorName || ''}`,
     };
 
     localStorage.setItem(brideStorageKey, JSON.stringify([newItem, ...list]));
@@ -99,13 +102,13 @@ export function routeBookingToStorage(
     }
 
     const newItem = {
-      id: `svc_${Date.now()}`,
+      id: bookingId,
       serviceName: booking.serviceName || booking.vendorName || 'Groom Service',
       category: booking.category || 'Groom Service',
-      estimatedPrice: String(booking.price || 'Booked'),
+      estimatedPrice: String(booking.price || 'Pending'),
       targetLink: '/services',
-      status: 'Pending', // Shows as 'Booked'
-      notes: booking.details || `Booked with ${booking.vendorName || ''}`,
+      status: bookingStatus,
+      notes: booking.details || `Requested from ${booking.vendorName || ''}`,
     };
 
     localStorage.setItem(groomStorageKey, JSON.stringify([newItem, ...list]));
@@ -121,12 +124,12 @@ export function routeBookingToStorage(
     }
 
     const newTask: Task = {
-      id: `t_${Date.now()}`,
+      id: bookingId,
       name: `${booking.vendorName || booking.serviceName} (${booking.category || 'Vendor'})`,
       category: booking.category || 'Vendor Booking',
       dueDate: booking.date || 'Before Wedding',
       priority: 'High',
-      status: 'Pending',
+      status: (bookingStatus === 'Confirmed' || bookingStatus === 'Completed' ? 'Completed' : 'Pending') as any,
       assignedPerson: 'Planner / Couple',
     };
 

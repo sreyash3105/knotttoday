@@ -30,11 +30,13 @@ export function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>(() => {
     try {
       const saved = localStorage.getItem(storageKey);
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
     } catch (e) {
       console.error('Error loading tasks', e);
     }
-    if (user?.id === 'customer_1') return tasksData;
     return [];
   });
 
@@ -43,7 +45,8 @@ export function TasksPage() {
       try {
         const saved = localStorage.getItem(storageKey);
         if (saved) {
-          setTasks(JSON.parse(saved));
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) setTasks(parsed);
         }
       } catch (e) {
         console.error('Error reloading tasks', e);

@@ -45,14 +45,14 @@ export function VendorCard({
         <p className="mt-1 text-sm font-medium text-burgundy-700">{vendor.priceRange}</p>
         <p className="mt-2 line-clamp-2 text-sm text-charcoal/60">{vendor.description}</p>
 
-        {vendor.services.length > 0 && (
+        {(vendor.services || []).length > 0 && (
           <div className="mt-3 flex flex-wrap gap-1.5">
-            {vendor.services.map((s) => {
+            {(vendor.services || []).map((s) => {
               const isActive =
                 selectedTag &&
                 selectedTag !== 'all' &&
-                (s.toLowerCase().includes(selectedTag.toLowerCase()) ||
-                  selectedTag.toLowerCase().includes(s.toLowerCase()));
+                ((s || '').toLowerCase().includes(selectedTag.toLowerCase()) ||
+                  selectedTag.toLowerCase().includes((s || '').toLowerCase()));
 
               return onTagClick ? (
                 <button
